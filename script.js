@@ -52,8 +52,8 @@ let processingQueue = false;
 
 const translations = {
   en: {
-    pageTitle: "Flame & Forget",
-    title: "Flame & Forget 🔥",
+    pageTitle: "Flame and Forget",
+    title: "Flame and Forget 🔥",
     tagline:
       "Write down anything you're done with—regrets, cringey moments, bad habits, or just Tuesday. Burn it and move on.",
     inputLabel: "What needs to burn?",
@@ -75,8 +75,8 @@ const translations = {
     historyEmpty: "Nothing has burned yet. Toss something in!",
   },
   zh: {
-    pageTitle: "烧掉忘掉",
-    title: "烧掉忘掉 🔥",
+    pageTitle: "Flame and Forget",
+    title: "Flame and Forget 🔥",
     tagline:
       "写下任何你想放下的事——尴尬时刻、坏习惯、或者只是糟糕的一天。烧掉它，继续前进。",
     inputLabel: "需要焚烧什么？",
@@ -96,8 +96,8 @@ const translations = {
     historyEmpty: "还没有任何东西被焚烧，写点什么吧！",
   },
   es: {
-    pageTitle: "Quémalo y Olvídalo",
-    title: "Quémalo y Olvídalo 🔥",
+    pageTitle: "Flame and Forget",
+    title: "Flame and Forget 🔥",
     tagline:
       "Escribe lo que quieras dejar atrás—momentos vergonzosos, malos hábitos, o simplemente el martes. Quémalo y sigue adelante.",
     inputLabel: "¿Qué debe arder?",
@@ -118,8 +118,8 @@ const translations = {
     historyEmpty: "Nada se ha quemado todavía. ¡Alimenta el fuego!",
   },
   hi: {
-    pageTitle: "जलाओ और भूल जाओ",
-    title: "जलाओ और भूल जाओ 🔥",
+    pageTitle: "Flame and Forget",
+    title: "Flame and Forget 🔥",
     tagline:
       "वह सब लिखें जो आप पीछे छोड़ना चाहते हैं—शर्मनाक पल, बुरी आदतें, या सिर्फ बुरा दिन। इसे जलाएं और आगे बढ़ें।",
     inputLabel: "क्या जलाना है?",
@@ -140,8 +140,8 @@ const translations = {
     historyEmpty: "अभी तक कुछ नहीं जला। आग को कुछ दीजिए!",
   },
   ar: {
-    pageTitle: "احرق وانسَ",
-    title: "احرق وانسَ 🔥",
+    pageTitle: "Flame and Forget",
+    title: "Flame and Forget 🔥",
     tagline:
       "اكتب أي شيء تريد تركه خلفك—لحظات محرجة، عادات سيئة، أو مجرد يوم سيء. احرقه وتقدم للأمام।",
     inputLabel: "ما الذي يجب أن يحترق؟",
@@ -162,8 +162,8 @@ const translations = {
     historyEmpty: "لم يُحرق شيء بعد. غذِّ النار!",
   },
   fr: {
-    pageTitle: "Brûle et Oublie",
-    title: "Brûle et Oublie 🔥",
+    pageTitle: "Flame and Forget",
+    title: "Flame and Forget 🔥",
     tagline:
       "Écris tout ce que tu veux laisser derrière toi—moments embarrassants, mauvaises habitudes, ou simplement un mauvais mardi. Brûle-le et avance.",
     inputLabel: "Qu'est-ce qui doit brûler ?",
