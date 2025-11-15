@@ -1,0 +1,4 @@
+#!/bin/bash
+# Deploy to surge.sh
+
+surge --project . --domain flame-and-forget.surge.sh

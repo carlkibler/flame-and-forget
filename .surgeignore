@@ -1,0 +1,10 @@
+# Surge ignore file - excludes files from deployment
+.git
+.idea
+.claude
+node_modules
+dist
+*.md
+*.py
+.gitignore
+.surgeignore

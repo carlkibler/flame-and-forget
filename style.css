@@ -29,15 +29,6 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h200v200H0z' fill='%23090c12'/%3E%3Cpath d='M0 0h200v200H0z' fill='none' stroke='%2310243a' stroke-width='0.6' opacity='0.15'/%3E%3C/svg%3E");
 }
 
-.scene::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: url("data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='2' cy='2' r='2' fill='%23ffffff' opacity='0.08'/%3E%3C/svg%3E");
-  opacity: 0.2;
-  pointer-events: none;
-}
-
 .hero {
   max-width: 960px;
   margin: 0 auto 2rem;
@@ -216,8 +207,8 @@ body {
   position: absolute;
   left: 0;
   right: 0;
-  top: -170px;
-  height: 170px;
+  top: -150px;
+  height: 150px;
   overflow: visible;
   pointer-events: none;
   z-index: 2;
@@ -505,13 +496,7 @@ body {
 }
 
 .note .smoke {
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.7);
-  border-radius: 50%;
-  top: -12px;
-  filter: blur(1px);
+  display: none;
 }
 
 .note.ignite {
@@ -568,7 +553,8 @@ body {
 
 @media (max-width: 640px) {
   .queue-deck {
-    top: -140px;
+    top: -120px;
+    height: 120px;
   }
   .settings-wrap {
     margin-top: 1.5rem;

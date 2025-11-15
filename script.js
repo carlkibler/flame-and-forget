@@ -280,7 +280,7 @@ function nextPalette() {
 function generateQueuePlacement() {
   return {
     leftPercent: 50 + (Math.random() - 0.5) * 40,
-    topOffset: 10 + Math.random() * 90,
+    topOffset: 70 + Math.random() * 60,
     tilt: randomTilt(),
   };
 }
