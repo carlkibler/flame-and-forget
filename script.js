@@ -50,6 +50,97 @@ let paletteIndex = 0;
 const burnQueue = [];
 let processingQueue = false;
 
+// ============================================================
+// SEASONAL THEME
+// ============================================================
+function getCurrentSeason() {
+  const month = new Date().getMonth(); // 0-11
+  if (month >= 2 && month <= 4) return "spring"; // Mar-May
+  if (month >= 5 && month <= 7) return "summer"; // Jun-Aug
+  if (month >= 8 && month <= 10) return "autumn"; // Sep-Nov
+  return "winter"; // Dec-Feb
+}
+
+function applySeasonalTheme() {
+  const season = getCurrentSeason();
+  document.body.setAttribute("data-season", season);
+
+  // Apply seasonal colors to root
+  const seasonalColors = {
+    winter: { bg: "#0a1420", accent: "#4a90c8" },
+    spring: { bg: "#1a1520", accent: "#e89acc" },
+    summer: { bg: "#181408", accent: "#ffd166" },
+    autumn: { bg: "#1a0f08", accent: "#ff8c42" }
+  };
+
+  const colors = seasonalColors[season];
+  root.style.setProperty("--seasonal-bg", colors.bg);
+  root.style.setProperty("--seasonal-accent", colors.accent);
+}
+
+// ============================================================
+// SOUND EFFECTS
+// ============================================================
+const audioContext = typeof AudioContext !== 'undefined' ? new AudioContext() : null;
+
+// Resume AudioContext on first user interaction (browser autoplay policy)
+function ensureAudioContext() {
+  if (audioContext && audioContext.state === 'suspended') {
+    audioContext.resume();
+  }
+}
+
+function playWhooshSound() {
+  if (!audioContext) return;
+  ensureAudioContext();
+
+  const osc = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+
+  osc.connect(gain);
+  gain.connect(audioContext.destination);
+
+  // Whoosh: descending frequency
+  osc.frequency.setValueAtTime(800, audioContext.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.3);
+
+  gain.gain.setValueAtTime(0.15, audioContext.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+  osc.start(audioContext.currentTime);
+  osc.stop(audioContext.currentTime + 0.3);
+}
+
+function playCrackleSound() {
+  if (!audioContext) return;
+  ensureAudioContext();
+
+  const bufferSize = audioContext.sampleRate * 0.5;
+  const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+  const data = buffer.getChannelData(0);
+
+  // Generate crackling noise
+  for (let i = 0; i < bufferSize; i++) {
+    if (Math.random() > 0.9) {
+      data[i] = (Math.random() * 2 - 1) * 0.08;
+    } else {
+      data[i] = 0;
+    }
+  }
+
+  const source = audioContext.createBufferSource();
+  const gain = audioContext.createGain();
+
+  source.buffer = buffer;
+  source.connect(gain);
+  gain.connect(audioContext.destination);
+
+  gain.gain.setValueAtTime(0.12, audioContext.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+
+  source.start(audioContext.currentTime);
+}
+
 const translations = {
   en: {
     pageTitle: "Flame and Forget",
@@ -456,6 +547,8 @@ function dropEntry(entry) {
     ensureSmoke(element);
     element.classList.add("note");
     element.classList.add("ignite");
+    // Play crackle when card reaches the fire (after drop completes)
+    setTimeout(() => playCrackleSound(), settings.dropDuration);
   });
 
   const onBurnEnd = (event) => {
@@ -707,5 +800,6 @@ function applyTranslations(lang) {
 updateDurationVars();
 updateFlameVars();
 initLanguageOptions();
+applySeasonalTheme();
 renderHistory();
 input?.focus();

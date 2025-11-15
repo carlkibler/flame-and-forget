@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Burning Notes</title>
+<style>
+  html, body { height: 100%; margin: 0; background: #0b0e13; color: #eee; font-family: system-ui, sans-serif; }
+  #wrap { display: grid; place-items: center; height: 100%; }
+  #ui {
+    position: absolute; top: 16px; left: 16px; display: flex; gap: 8px; align-items: center;
+    background: rgba(20, 24, 30, 0.7); border: 1px solid rgba(255,255,255,0.1); padding: 10px 12px; border-radius: 8px;
+    backdrop-filter: blur(4px);
+  }
+  #ui input { background: #12161c; border: 1px solid #2b3440; color: #eee; padding: 6px 8px; border-radius: 6px; }
+  #ui button { background: #e35538; border: none; color: #fff; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+  #ui button:hover { background: #f06b4c; }
+  canvas { width: 92vw; height: 80vh; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+  #hint { position: absolute; bottom: 16px; left: 16px; opacity: 0.7; font-size: 14px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div id="ui">
+    <input id="text" placeholder="Type a note..." />
+    <button id="add">Add note</button>
+    <span style="opacity:.7">Drag notes into the fire.</span>
+  </div>
+  <div id="hint">Tip: flick a note quickly for a dramatic burn.</div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d', { alpha: false });
+  const DPR = Math.max(1, Math.floor(window.devicePixelRatio || 1));
+
+  function resize() {
+    canvas.width = Math.floor(canvas.clientWidth * DPR);
+    canvas.height = Math.floor(canvas.clientHeight * DPR);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // Scene config
+  const g = 0.0009;              // gravity
+  const air = 0.0003;            // air drag
+  const fireY = () => canvas.height - 120 * DPR; // fire baseline
+  const notes = [];
+  const particles = [];          // smoke + embers
+  const flames = [];             // decorative flame tongues
+
+  // Create background gradient
+  function drawBackground() {
+    const grd = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grd.addColorStop(0, '#0b0e13');
+    grd.addColorStop(1, '#141a22');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  // Fire pit shape + glow
+  function drawFireBase(time) {
+    const y = fireY();
+    // Ground
+    ctx.fillStyle = '#1b232d';
+    ctx.fillRect(0, y + 60, canvas.width, canvas.height - (y + 60));
+
+    // Pit stones
+    for (let i = 0; i < 10; i++) {
+      const x = (i + 0.5) * (canvas.width / 10);
+      const r = 26 * DPR;
+      ctx.fillStyle = i % 2 ? '#2a3440' : '#2f3947';
+      ctx.beginPath();
+      ctx.ellipse(x, y + 40 * DPR, r * 1.4, r, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Inner ember glow
+    const glow = ctx.createRadialGradient(canvas.width/2, y, 10, canvas.width/2, y, 240 * DPR);
+    glow.addColorStop(0, 'rgba(255,150,60,0.6)');
+    glow.addColorStop(0.5, 'rgba(255,90,40,0.25)');
+    glow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(canvas.width/2, y, 240 * DPR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Fire tongues
+    if (flames.length < 60) {
+      flames.push({
+        x: canvas.width/2 + (Math.random()-0.5) * 140 * DPR,
+        baseY: y,
+        h: (100 + Math.random()*140) * DPR,
+        life: 600 + Math.random()*1200,
+        born: time
+      });
+    }
+    flames.forEach(f => {
+      const t = (time - f.born) / f.life;
+      const curve = Math.sin(t * Math.PI);
+      const fx = f.x + Math.sin(t * 8) * 8 * DPR;
+      const fh = f.h * curve;
+      const w = 10 * DPR + 8 * DPR * curve;
+
+      const grad = ctx.createLinearGradient(fx, f.baseY, fx, f.baseY - fh);
+      grad.addColorStop(0, 'rgba(255,150,60,0.7)');
+      grad.addColorStop(0.5, 'rgba(255,110,40,0.7)');
+      grad.addColorStop(1, 'rgba(255,220,120,0.0)');
+      ctx.fillStyle = grad;
+
+      ctx.beginPath();
+      ctx.moveTo(fx - w, f.baseY);
+      ctx.quadraticCurveTo(fx, f.baseY - fh * 0.5, fx - w*0.4, f.baseY - fh);
+      ctx.quadraticCurveTo(fx, f.baseY - fh * 0.5, fx + w, f.baseY);
+      ctx.closePath();
+      ctx.fill();
+    });
+    for (let i = flames.length - 1; i >= 0; i--) {
+      if (time - flames[i].born > flames[i].life) flames.splice(i, 1);
+    }
+  }
+
+  // Notes
+  function makeNote(text, x, y) {
+    const w = 160 * DPR, h = 110 * DPR;
+    return {
+      text, x, y, w, h,
+      vx: 0, vy: 0,
+      ax: 0, ay: 0,
+      rot: 0, vrot: 0,
+      dragging: false, burnt: 0, // 0..1
+      char: 0,                   // char level visuals
+      curl: 0                    // curl amount when burning
+    };
+  }
+
+  // Initial notes
+  notes.push(makeNote('Let go of what no longer serves.', canvas.width*0.25, canvas.height*0.2));
+  notes.push(makeNote('Old assumptions.', canvas.width*0.55, canvas.height*0.15));
+  notes.push(makeNote('That nagging self-critique.', canvas.width*0.7, canvas.height*0.28));
+
+  // Drag handling
+  let dragTarget = null, dragDX = 0, dragDY = 0, lastPos = {x:0,y:0}, lastTime = 0;
+  function pointerPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    return { x: x * DPR, y: y * DPR };
+  }
+  function hitNote(x, y) {
+    for (let i = notes.length - 1; i >= 0; i--) {
+      const n = notes[i];
+      if (x > n.x && x < n.x + n.w && y > n.y && y < n.y + n.h) return n;
+    }
+    return null;
+  }
+  function onDown(e) {
+    const p = pointerPos(e);
+    const n = hitNote(p.x, p.y);
+    if (n) {
+      dragTarget = n;
+      n.dragging = true;
+      dragDX = p.x - n.x;
+      dragDY = p.y - n.y;
+      lastPos = p; lastTime = performance.now();
+    }
+    e.preventDefault();
+  }
+  function onMove(e) {
+    if (!dragTarget) return;
+    const p = pointerPos(e);
+    dragTarget.x = p.x - dragDX;
+    dragTarget.y = p.y - dragDY;
+    // Velocity from pointer motion (for flicks)
+    const now = performance.now();
+    const dt = Math.max(16, now - lastTime);
+    dragTarget.vx = (p.x - lastPos.x) / dt;
+    dragTarget.vy = (p.y - lastPos.y) / dt;
+    dragTarget.vrot = (dragTarget.vx + dragTarget.vy) * 0.0002;
+    lastPos = p; lastTime = now;
+    e.preventDefault();
+  }
+  function onUp() {
+    if (dragTarget) dragTarget.dragging = false;
+    dragTarget = null;
+  }
+  canvas.addEventListener('mousedown', onDown);
+  canvas.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+  canvas.addEventListener('touchstart', onDown, {passive:false});
+  canvas.addEventListener('touchmove', onMove, {passive:false});
+  window.addEventListener('touchend', onUp);
+
+  // Add notes via UI
+  document.getElementById('add').addEventListener('click', () => {
+    const input = document.getElementById('text');
+    const t = input.value.trim();
+    if (!t) return;
+    notes.push(makeNote(t, canvas.width*0.5 - 80*DPR, canvas.height*0.15));
+    input.value = '';
+  });
+
+  // Particles
+  function spawnSmoke(x, y, amount=6) {
+    for (let i=0;i<amount;i++){
+      particles.push({
+        type:'smoke',
+        x, y,
+        vx: (Math.random()-0.5)*0.04*DPR,
+        vy: -0.05*DPR - Math.random()*0.05*DPR,
+        r: 6*DPR + Math.random()*10*DPR,
+        a: 0.5 + Math.random()*0.3,
+        life: 1800, born: performance.now()
+      });
+    }
+  }
+  function spawnEmber(x, y, amount=3) {
+    for (let i=0;i<amount;i++){
+      particles.push({
+        type:'ember',
+        x, y,
+        vx: (Math.random()-0.5)*0.2*DPR,
+        vy: -0.12*DPR - Math.random()*0.08*DPR,
+        a: 1,
+        r: 2.3*DPR,
+        hue: 20 + Math.random()*50,
+        life: 900, born: performance.now()
+      });
+    }
+  }
+
+  function drawParticles(time, dt) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.vx *= (1 - air*10);
+      p.vy *= (1 - air*10);
+      p.vy += g * -0.2; // float upward
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+
+      const t = (time - p.born) / p.life;
+      if (p.type === 'smoke') {
+        ctx.globalAlpha = p.a * (1 - t);
+        ctx.fillStyle = '#5c6673';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * (0.8 + t*0.6), 0, Math.PI*2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      } else {
+        const col = `hsl(${p.hue}, 90%, ${60 - 40*t}%)`;
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+        ctx.fill();
+        // subtle glow
+        const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r*4);
+        grad.addColorStop(0, `hsla(${p.hue},90%,60%,0.6)`);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r*4, 0, Math.PI*2);
+        ctx.fill();
+      }
+
+      if (t >= 1) particles.splice(i, 1);
+    }
+  }
+
+  function drawNote(n) {
+    // Burn progress affects paper color and curl
+    const base = 255 - n.char*120;
+    const paper = `rgb(${base}, ${base-10}, ${base-40})`;
+    ctx.save();
+    ctx.translate(n.x + n.w/2, n.y + n.h/2);
+    ctx.rotate(n.rot);
+    ctx.translate(-n.w/2, -n.h/2);
+
+    // Curl effect: skew top edge inward
+    const curl = n.curl * 0.3;
+    ctx.beginPath();
+    ctx.moveTo(0 + curl*n.w, 0);
+    ctx.lineTo(n.w, 0);
+    ctx.lineTo(n.w, n.h);
+    ctx.lineTo(0, n.h);
+    ctx.closePath();
+
+    // Paper fill
+    ctx.fillStyle = paper;
+    ctx.fill();
+
+    // Border, slight ragged charred edge
+    ctx.strokeStyle = `rgba(${base-80}, ${base-90}, ${base-100}, 0.8)`;
+    ctx.lineWidth = 2.5 * DPR;
+    ctx.stroke();
+
+    // Burnt edge vignette
+    const edgeGrad = ctx.createLinearGradient(0, 0, 0, n.h);
+    edgeGrad.addColorStop(0, `rgba(80,60,40, ${0.15 + n.char*0.35})`);
+    edgeGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = edgeGrad;
+    ctx.fillRect(0, 0, n.w, n.h);
+
+    // Text
+    ctx.fillStyle = `rgba(20,20,20, ${1 - n.burnt*0.7})`;
+    ctx.font = `${18 * DPR}px ui-sans-serif, system-ui`;
+    ctx.textBaseline = 'top';
+    wrapText(ctx, n.text, 12 * DPR, 12 * DPR, n.w - 24 * DPR, 22 * DPR);
+
+    // Singe marks near bottom when burning
+    if (n.burnt > 0.1) {
+      ctx.globalAlpha = Math.min(0.5, n.burnt);
+      for (let i=0;i<6;i++){
+        const sx = Math.random() * n.w;
+        const sy = n.h - Math.random() * (n.h * Math.min(0.6, n.burnt));
+        ctx.fillStyle = 'rgba(60,40,20,0.5)';
+        ctx.fillRect(sx, sy, 8 * DPR, 2 * DPR);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
+  }
+
+  function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+    const words = text.split(' ');
+    let line = '';
+    for (let n = 0; n < words.length; n++) {
+      const testLine = line + words[n] + ' ';
+      const metrics = ctx.measureText(testLine);
+      if (metrics.width > maxWidth && n > 0) {
+        ctx.fillText(line, x, y);
+        line = words[n] + ' ';
+        y += lineHeight;
+      } else {
+        line = testLine;
+      }
+    }
+    ctx.fillText(line, x, y);
+  }
+
+  function updateNote(n, dt, time) {
+    if (!n.dragging) {
+      // Physics
+      n.vx *= (1 - air);
+      n.vy *= (1 - air);
+      n.vy += g * dt;
+      n.x += n.vx * dt;
+      n.y += n.vy * dt;
+      n.vrot *= (1 - air*2);
+      n.rot += n.vrot * dt;
+
+      // Bounds
+      n.x = Math.max(10*DPR, Math.min(n.x, canvas.width - n.w - 10*DPR));
+      if (n.y > fireY() - n.h/2) {
+        // Near fire: convective lift and turbulence
+        n.vy -= 0.0015 * dt;
+        n.vx += (Math.random()-0.5) * 0.0008 * dt;
+        n.vrot += (Math.random()-0.5) * 0.00008 * dt;
+      }
+    }
+
+    // Burning logic: if bottom edge overlaps flame area
+    const overlap = (n.y + n.h) - fireY();
+    if (overlap > -10 * DPR) {
+      n.burnt = Math.min(1, n.burnt + 0.0007 * dt + overlap * 0.000002 * dt);
+      n.char = Math.min(1, n.char + 0.0005 * dt);
+      n.curl = Math.min(1, n.curl + 0.0008 * dt);
+      // Particles from bottom edge
+      const px = n.x + n.w * (0.2 + Math.random()*0.6);
+      const py = n.y + n.h - 4 * DPR;
+      if (Math.random() < 0.5) spawnSmoke(px, py, 3);
+      if (Math.random() < 0.3) spawnEmber(px, py, 2);
+    }
+
+    // Fade out when fully burnt
+    if (n.burnt >= 1) {
+      // final ash puff
+      spawnSmoke(n.x + n.w/2, n.y + n.h/2, 10);
+    }
+  }
+
+  // Remove fully burnt notes
+  function cullNotes() {
+    for (let i = notes.length - 1; i >= 0; i--) {
+      if (notes[i].burnt >= 1) notes.splice(i, 1);
+    }
+  }
+
+  // Main loop
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(32, now - last); // cap dt for stability
+    last = now;
+
+    drawBackground();
+    drawFireBase(now);
+
+    notes.forEach(n => updateNote(n, dt, now));
+    notes.forEach(drawNote);
+    cullNotes();
+
+    drawParticles(now, dt);
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -4,6 +4,7 @@
 .claude
 node_modules
 dist
+docs
 *.md
 *.py
 .gitignore
