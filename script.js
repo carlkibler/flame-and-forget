@@ -427,10 +427,14 @@ function dropEntry(entry) {
   element.style.left = `${startX - layerRect.left}px`;
   element.style.top = `${startY - layerRect.top}px`;
 
+  // Set tilt BEFORE converting to note to prevent visual jump
+  const tilt = entry.placement?.tilt ?? randomTilt();
+  element.style.setProperty("--tilt", `${tilt}deg`);
+
   layer?.appendChild(element);
 
   convertToNoteElement(entry);
-  positionNote(element, originRect, entry.placement?.tilt);
+  positionNote(element, originRect, tilt);
 
   requestAnimationFrame(() => {
     element.classList.add("ignite");
