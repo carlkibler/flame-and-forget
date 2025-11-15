@@ -251,12 +251,8 @@ function enqueueMessages(messages, options = {}) {
   messages.forEach((message, index) => {
     const entry = createQueueEntry(message);
     burnQueue.push(entry);
-    const shouldAnimate = options.animateFromInput && index === 0;
-    if (shouldAnimate) {
-      animateEntryFromInput(entry);
-    } else {
-      settleEntryIntoDeck(entry);
-    }
+    // Simplified: always settle directly into deck, no animation
+    settleEntryIntoDeck(entry);
   });
   processQueue();
 }
@@ -414,36 +410,43 @@ function dropEntry(entry) {
     return;
   }
 
+  // Capture position while still in queue
   const originRect = element.getBoundingClientRect();
   const layerRect = layer.getBoundingClientRect();
+  const startX = originRect.left + originRect.width / 2;
+  const startY = originRect.top + originRect.height / 2;
 
+  // Remove from queue
   if (queueDeck?.contains(element)) {
     queueDeck.removeChild(element);
   }
 
-  // Set correct position immediately before appending to prevent flicker
-  const startX = originRect.left + originRect.width / 2;
-  const startY = originRect.top + originRect.height / 2;
+  // Convert to note element (changes classes)
+  ensureSmoke(element);
+  element.classList.remove("queue-card", "floating-card", "arrive");
+  element.classList.add("note");
+  element.style.removeProperty("--queue-left");
+  element.style.removeProperty("--queue-top");
+  element.style.removeProperty("--queue-tilt");
+  applyNotePalette(element, entry.color);
+
+  // Set position and tilt AFTER class change, BEFORE appending to layer
+  const tilt = entry.placement?.tilt ?? randomTilt();
+  element.style.setProperty("--tilt", `${tilt}deg`);
   element.style.left = `${startX - layerRect.left}px`;
   element.style.top = `${startY - layerRect.top}px`;
 
-  // Set tilt BEFORE converting to note to prevent visual jump
-  const tilt = entry.placement?.tilt ?? randomTilt();
-  element.style.setProperty("--tilt", `${tilt}deg`);
+  // Set fire target position
+  const fireRect = fireTarget.getBoundingClientRect();
+  const targetX = fireRect.left + fireRect.width / 2;
+  const targetY = fireRect.top + fireRect.height * (0.25 + Math.random() * 0.3);
+  element.style.setProperty("--delta-x", `${targetX - startX}px`);
+  element.style.setProperty("--delta-y", `${targetY - startY}px`);
 
+  // Now append to layer - should be positioned correctly
   layer?.appendChild(element);
 
-  // Disable transitions before converting to prevent glitch
-  element.style.transition = "none";
-
-  convertToNoteElement(entry);
-  positionNote(element, originRect, tilt);
-
-  // Re-enable transitions after a frame
-  requestAnimationFrame(() => {
-    element.style.transition = "";
-  });
-
+  // Start animation
   requestAnimationFrame(() => {
     element.classList.add("ignite");
   });
