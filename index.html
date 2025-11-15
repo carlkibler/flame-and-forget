@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Flame and Forget</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -12,23 +13,109 @@
         <div class="hero-text">
           <h1 data-i18n="title">Flame and Forget 🔥</h1>
           <p data-i18n="tagline">
-            Write down anything you're done with—regrets, cringey moments, bad habits, or just Tuesday. Burn it and move on.
+            Write down anything you're done with—regrets, cringey moments, bad habits, or just Tuesday.<br>
+            Burn it and move on.
           </p>
+        </div>
+        <div class="hero-controls">
+          <select id="language-select" class="language-select" aria-label="Language"></select>
+          <details class="settings-toggle" id="settings-panel">
+            <summary aria-label="Settings">
+              <span class="icon" aria-hidden="true">⚙️</span>
+            </summary>
+            <div class="settings-dropdown">
+              <div class="setting-field">
+                <label for="remember-items-toggle">
+                  <input type="checkbox" id="remember-items-toggle" checked>
+                  <span data-i18n="rememberItemsLabel">Remember my items</span>
+                </label>
+              </div>
+              <div class="setting-field">
+                <label data-i18n="fireStyleLabel">Fire style</label>
+                <div class="fire-style-buttons">
+                  <button type="button" class="fire-style-btn" data-fire-style-btn="original" data-i18n="fireStyleOriginal">Original</button>
+                  <button type="button" class="fire-style-btn" data-fire-style-btn="realistic" data-i18n="fireStyleRealistic">Realistic</button>
+                  <button type="button" class="fire-style-btn" data-fire-style-btn="mystical" data-i18n="fireStyleMystical">Mystical</button>
+                  <button type="button" class="fire-style-btn" data-fire-style-btn="minimalist" data-i18n="fireStyleMinimalist">Minimalist</button>
+                </div>
+              </div>
+              <div class="setting-field">
+                <label for="item-delay">
+                  <span data-i18n="itemDelayLabel">Item delay (seconds)</span>
+                  <output id="item-delay-display">2.5s</output>
+                </label>
+                <input
+                  type="range"
+                  id="item-delay"
+                  min="0.5"
+                  max="6"
+                  step="0.1"
+                  value="2.5"
+                />
+              </div>
+              <div class="setting-field">
+                <label for="fall-duration">
+                  <span data-i18n="fallDurationLabel">Fall duration (seconds)</span>
+                  <output id="fall-duration-display">3.5s</output>
+                </label>
+                <input
+                  type="range"
+                  id="fall-duration"
+                  min="1.5"
+                  max="7"
+                  step="0.1"
+                  value="3.5"
+                />
+              </div>
+              <div class="setting-field">
+                <label for="burn-duration">
+                  <span data-i18n="burnDurationLabel">Burn duration (seconds)</span>
+                  <output id="burn-duration-display">2.2s</output>
+                </label>
+                <input
+                  type="range"
+                  id="burn-duration"
+                  min="0.8"
+                  max="6"
+                  step="0.1"
+                  value="2.2"
+                />
+              </div>
+              <div class="setting-field">
+                <label for="flame-intensity">
+                  <span data-i18n="flameIntensityLabel">Flame intensity</span>
+                  <output id="flame-intensity-display">100%</output>
+                </label>
+                <input
+                  type="range"
+                  id="flame-intensity"
+                  min="0.48"
+                  max="1.28"
+                  step="0.04"
+                  value="0.8"
+                />
+              </div>
+              <div class="setting-field">
+                <button type="button" id="reset-settings" class="reset-settings-btn" data-i18n="resetSettings">Reset to defaults</button>
+              </div>
+            </div>
+          </details>
         </div>
       </header>
 
       <main class="camp">
         <form id="burn-form" autocomplete="off" spellcheck="false">
-          <label class="sr-only" for="grievance" data-i18n="inputLabel">What needs to burn?</label>
+          <label for="grievance" class="form-label" data-i18n="inputLabel">What should we flame? Type and press enter.</label>
           <textarea
             id="grievance"
             name="grievance"
             maxlength="240"
             data-i18n-placeholder="placeholder"
-            placeholder="e.g., Tripping on the stairs in front of everyone"
-            rows="2"
+            placeholder="e.g., Sent a reply-all email meant for one person"
+            rows="3"
           ></textarea>
           <button type="button" id="burn-button" data-i18n="burnButton">Burn it and forget it</button>
+          <button type="button" id="examples-button" data-i18n="examplesButton">Try some examples</button>
         </form>
 
         <div class="firepit">
@@ -62,110 +149,97 @@
               <rect x="50" y="50" width="10" height="110" rx="5" fill="#4a4a4a" />
               <rect x="100" y="50" width="10" height="110" rx="5" fill="#4a4a4a" />
             </svg>
-            <div class="flame">
-              <div></div>
-              <div></div>
-              <div></div>
+            <!-- Fire styles (switchable) -->
+            <div class="flame-container" data-fire-style="original">
+              <!-- Original simple flame -->
+              <div class="flame flame-original">
+                <div></div>
+                <div></div>
+                <div></div>
+              </div>
+
+              <!-- Realistic flame -->
+              <svg class="flame flame-realistic" viewBox="0 0 180 240" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <defs>
+                  <filter id="fire-glow">
+                    <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur"/>
+                    <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 0.6 0 0 0  0 0 0.3 0 0  0 0 0 1.5 0"/>
+                    <feBlend in="SourceGraphic" in2="blur" mode="normal"/>
+                  </filter>
+                  <radialGradient id="flame-hot" cx="50%" cy="70%">
+                    <stop offset="0%" stop-color="#fff9e6" stop-opacity="0.95"/>
+                    <stop offset="40%" stop-color="#ffb347" stop-opacity="0.8"/>
+                    <stop offset="100%" stop-color="#ff4500" stop-opacity="0"/>
+                  </radialGradient>
+                </defs>
+                <ellipse class="flame-realistic-glow" cx="90" cy="220" rx="75" ry="30" fill="url(#flame-hot)" opacity="0.7"/>
+                <ellipse class="flame-realistic-dancer flame-realistic-4" cx="70" cy="140" rx="18" ry="50" fill="url(#flame-hot)"/>
+                <ellipse class="flame-realistic-dancer flame-realistic-5" cx="90" cy="120" rx="22" ry="65" fill="url(#flame-hot)" filter="url(#fire-glow)"/>
+                <ellipse class="flame-realistic-dancer flame-realistic-6" cx="110" cy="145" rx="16" ry="48" fill="url(#flame-hot)"/>
+              </svg>
+
+              <!-- Mystical flame -->
+              <svg class="flame flame-mystical" viewBox="0 0 90 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <defs>
+                  <radialGradient id="flame-mystical-core" cx="50%" cy="80%">
+                    <stop offset="0%" stop-color="#e0f2ff" stop-opacity="0.95"/>
+                    <stop offset="40%" stop-color="#a5d8ff" stop-opacity="0.85"/>
+                    <stop offset="70%" stop-color="#6366f1" stop-opacity="0.6"/>
+                    <stop offset="100%" stop-color="#4c1d95" stop-opacity="0"/>
+                  </radialGradient>
+                </defs>
+                <ellipse class="flame-mystical-glow" cx="45" cy="105" rx="38" ry="22" fill="url(#flame-mystical-core)"/>
+                <ellipse class="flame-mystical-dancer flame-mystical-1" cx="45" cy="80" rx="28" ry="50" fill="url(#flame-mystical-core)"/>
+                <ellipse class="flame-mystical-dancer flame-mystical-2" cx="45" cy="75" rx="22" ry="42" fill="url(#flame-mystical-core)"/>
+                <circle class="flame-mystical-ember flame-mystical-e1" cx="30" cy="70" r="2" fill="#fde68a"/>
+                <circle class="flame-mystical-ember flame-mystical-e2" cx="60" cy="65" r="1.5" fill="#fde68a"/>
+                <circle class="flame-mystical-ember flame-mystical-e3" cx="45" cy="50" r="1.8" fill="#fef3c7"/>
+              </svg>
+
+              <!-- Minimalist flame -->
+              <svg class="flame flame-minimalist" viewBox="0 0 90 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <defs>
+                  <radialGradient id="flame-min-core" cx="50%" cy="70%">
+                    <stop offset="0%" stop-color="#fffacd" stop-opacity="0.9"/>
+                    <stop offset="40%" stop-color="#ffd166" stop-opacity="0.85"/>
+                    <stop offset="70%" stop-color="#ff6b6b" stop-opacity="0.7"/>
+                    <stop offset="100%" stop-color="#ff6b6b" stop-opacity="0"/>
+                  </radialGradient>
+                </defs>
+                <ellipse class="flame-min-glow" cx="45" cy="110" rx="40" ry="30" fill="url(#flame-min-core)" opacity="0.5"/>
+                <ellipse class="flame-min-layer flame-min-1" cx="45" cy="80" rx="28" ry="50" fill="url(#flame-min-core)"/>
+                <ellipse class="flame-min-layer flame-min-2" cx="45" cy="75" rx="22" ry="42" fill="url(#flame-min-core)"/>
+                <circle class="flame-min-ember flame-min-e1" cx="35" cy="60" r="1.5" fill="#ffeb99"/>
+                <circle class="flame-min-ember flame-min-e2" cx="55" cy="55" r="1.2" fill="#ffd166"/>
+                <circle class="flame-min-ember flame-min-e3" cx="45" cy="45" r="1" fill="#fffacd"/>
+              </svg>
             </div>
           </div>
           <div class="fire-target" data-fire-target></div>
         </div>
       </main>
 
-      <section class="settings-wrap">
-        <details class="settings-panel" id="settings-panel">
-          <summary>
-            <span class="icon" aria-hidden="true">⚙️</span>
-            <span data-i18n="settingsLabel">Settings</span>
-          </summary>
-          <div class="settings-content">
-            <div class="setting-field">
-              <label for="language-select" data-i18n="languageLabel">Language</label>
-              <select id="language-select"></select>
-            </div>
-            <div class="setting-field">
-              <label for="item-delay">
-                <span data-i18n="itemDelayLabel">Item delay (seconds)</span>
-                <output id="item-delay-display">2.5s</output>
-              </label>
-              <input
-                type="range"
-                id="item-delay"
-                min="0.5"
-                max="6"
-                step="0.1"
-                value="2.5"
-              />
-            </div>
-            <div class="setting-field">
-              <label for="fall-duration">
-                <span data-i18n="fallDurationLabel">Fall duration (seconds)</span>
-                <output id="fall-duration-display">3.5s</output>
-              </label>
-              <input
-                type="range"
-                id="fall-duration"
-                min="1.5"
-                max="7"
-                step="0.1"
-                value="3.5"
-              />
-            </div>
-            <div class="setting-field">
-              <label for="burn-duration">
-                <span data-i18n="burnDurationLabel">Burn duration (seconds)</span>
-                <output id="burn-duration-display">2.2s</output>
-              </label>
-              <input
-                type="range"
-                id="burn-duration"
-                min="0.8"
-                max="6"
-                step="0.1"
-                value="2.2"
-              />
-            </div>
-            <div class="setting-field">
-              <label for="flame-intensity">
-                <span data-i18n="flameIntensityLabel">Flame intensity</span>
-                <output id="flame-intensity-display">100%</output>
-              </label>
-              <input
-                type="range"
-                id="flame-intensity"
-                min="0.6"
-                max="1.6"
-                step="0.05"
-                value="1"
-              />
-            </div>
+      <section class="release-log-section" id="release-log">
+        <div class="release-log-header">
+          <h2 data-i18n="releasedAndForgotten">Released & Forgotten</h2>
+          <div class="log-controls">
+            <button id="remember-toggle-button" class="remember-toggle-button" aria-pressed="true">
+              <span class="icon" aria-hidden="true">💾</span>
+              <span class="label" data-i18n="remembering">Remembering</span>
+            </button>
+            <button id="clear-log" class="clear-log-button" data-i18n="clearLog">Clear log</button>
           </div>
-        </details>
+        </div>
+        <div id="release-list" class="release-list"></div>
       </section>
 
+      <div class="footer-separator"></div>
+
       <footer class="site-footer">
-        <p data-i18n="footerCopy">
-          Share the link, let it all go, and watch your worries turn to smoke.
+        <p>
+          Idea by Carl Kibler, coded by Claude and Codex. November 2025.
         </p>
       </footer>
-
-      <button class="history-toggle" id="history-toggle" aria-expanded="false">
-        <span class="icon" aria-hidden="true">🕯️</span>
-        <span data-i18n="historyToggle">Burn log</span>
-      </button>
-
-      <aside class="history-drawer" id="history-drawer" aria-hidden="true">
-        <div class="history-content">
-          <h2 data-i18n="historyTitle">Ashes archive</h2>
-          <p data-i18n="historyBlurb">
-            Relieve your mind of these artifacts—they’re gone, recorded here only as proof they can’t hurt your future.
-          </p>
-          <div class="history-empty" data-i18n="historyEmpty">
-            Nothing has burned yet. Toss something in!
-          </div>
-          <ul id="history-list" class="history-list"></ul>
-        </div>
-      </aside>
 
       <div class="note-layer" aria-live="polite"></div>
     </div>
