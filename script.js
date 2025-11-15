@@ -251,12 +251,8 @@ function enqueueMessages(messages, options = {}) {
   messages.forEach((message, index) => {
     const entry = createQueueEntry(message);
     burnQueue.push(entry);
-    const shouldAnimate = options.animateFromInput && index === 0;
-    if (shouldAnimate) {
-      animateEntryFromInput(entry);
-    } else {
-      settleEntryIntoDeck(entry);
-    }
+    // Simplified: always settle directly into deck, no animation
+    settleEntryIntoDeck(entry);
   });
   processQueue();
 }
@@ -291,8 +287,12 @@ function generateQueuePlacement() {
 
 function createEntryElement(text) {
   const card = document.createElement("div");
-  card.className = "note-card floating-card";
-  card.textContent = text;
+  card.className = "note-card queue-card";
+
+  // Create a text node, not textContent (to avoid any weird dot issues)
+  const textNode = document.createTextNode(text);
+  card.appendChild(textNode);
+
   return card;
 }
 
@@ -347,8 +347,7 @@ function settleEntryIntoDeck(entry) {
   }
 
   const element = entry.element;
-  element.classList.remove("floating-card", "arrive", "note");
-  element.classList.add("queue-card");
+  // Element already has note-card and queue-card classes from creation
   const pos = getDeckLocalPosition(entry);
   element.style.left = `${pos.left}px`;
   element.style.top = `${pos.top}px`;
@@ -410,41 +409,52 @@ function processQueue() {
 
 function dropEntry(entry) {
   const element = entry.element;
-  if (!element) {
+  if (!element || !queueDeck || !layer || !fireTarget) {
     return;
   }
 
-  const originRect = element.getBoundingClientRect();
-  const layerRect = layer.getBoundingClientRect();
+  // Capture the on-screen position before removing from the queue container
+  const elementRect = element.getBoundingClientRect();
+  if (!elementRect) {
+    return;
+  }
 
+  // Remove from queue deck so we can re-use the element for the drop animation
   if (queueDeck?.contains(element)) {
     queueDeck.removeChild(element);
   }
 
-  // Set correct position immediately before appending to prevent flicker
-  const startX = originRect.left + originRect.width / 2;
-  const startY = originRect.top + originRect.height / 2;
+  // Prepare the queue card so it can be positioned freely in the layer
+  prepareEntryForDrop(entry);
+
+  // Position at the queue position (where the element was)
+  const layerRect = layer.getBoundingClientRect();
+  const fireRect = fireTarget.getBoundingClientRect();
+
+  const startX = elementRect.left + elementRect.width / 2;
+  const startY = elementRect.top + elementRect.height / 2;
+
   element.style.left = `${startX - layerRect.left}px`;
   element.style.top = `${startY - layerRect.top}px`;
 
-  // Set tilt BEFORE converting to note to prevent visual jump
+  // Set tilt and target (into the fire). Preserve the queue tilt if available so
+  // the element doesn't visibly snap to a new angle.
   const tilt = entry.placement?.tilt ?? randomTilt();
   element.style.setProperty("--tilt", `${tilt}deg`);
 
+  const targetX = fireRect.left + fireRect.width / 2;
+  const targetY = fireRect.top + fireRect.height * 0.3;
+  element.style.setProperty("--delta-x", `${targetX - startX}px`);
+  element.style.setProperty("--delta-y", `${targetY - startY}px`);
+
+  // Append to layer
   layer?.appendChild(element);
 
-  // Disable transitions before converting to prevent glitch
-  element.style.transition = "none";
-
-  convertToNoteElement(entry);
-  positionNote(element, originRect, tilt);
-
-  // Re-enable transitions after a frame
+  // Start animation immediately after forcing the class change in the same frame
   requestAnimationFrame(() => {
-    element.style.transition = "";
-  });
-
-  requestAnimationFrame(() => {
+    element.classList.remove("queue-card");
+    ensureSmoke(element);
+    element.classList.add("note");
     element.classList.add("ignite");
   });
 
@@ -454,23 +464,21 @@ function dropEntry(entry) {
     }
     element.removeEventListener("animationend", onBurnEnd);
     element.remove();
-    entry.element = null;
-    recordBurn(entry);
   };
 
   element.addEventListener("animationend", onBurnEnd);
+  recordBurn(entry);
 }
 
-function convertToNoteElement(entry) {
+function prepareEntryForDrop(entry) {
   const element = entry.element;
-  ensureSmoke(element);
-  element.classList.remove("queue-card", "floating-card", "arrive");
-  element.classList.add("note");
+  element.classList.remove("floating-card", "arrive");
+  element.style.position = "absolute";
   element.style.removeProperty("--queue-left");
   element.style.removeProperty("--queue-top");
   element.style.removeProperty("--queue-tilt");
-  applyNotePalette(element, entry.color);
   element.style.removeProperty("transform");
+  applyNotePalette(element, entry.color);
 }
 
 function ensureSmoke(node) {
@@ -483,12 +491,18 @@ function ensureSmoke(node) {
 }
 
 function applyNotePalette(node, color = pastelPalette[0]) {
+  // Set CSS variables
   node.style.setProperty("--card-bg", color.bg);
   node.style.setProperty("--card-border", color.border);
   node.style.setProperty("--card-text", color.text);
   node.style.setProperty("--note-bg", color.bg);
   node.style.setProperty("--note-border", color.border);
   node.style.setProperty("--note-text", color.text);
+
+  // Also set directly as backup to ensure styling works
+  node.style.backgroundColor = color.bg;
+  node.style.borderColor = color.border;
+  node.style.color = color.text;
 }
 
 function positionNote(note, originRect, tiltValue) {

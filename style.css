@@ -501,7 +501,7 @@ body {
   position: absolute;
   transform-origin: center;
   opacity: 1;
-  transform: translate(-50%, -50%) scale(0.8) rotate(var(--tilt, -2deg));
+  transform: translate(-50%, -50%) rotate(var(--tilt, -2deg));
 }
 
 .note .smoke {
@@ -524,27 +524,14 @@ body {
 
 @keyframes note-drop {
   0% {
-    transform: translate(-50%, -50%) scale(0.8) rotate(var(--tilt));
-  }
-  20% {
-    transform: translate(var(--start-offset-x, -50%), var(--start-offset-y, -50%))
-      scale(1) rotate(calc(var(--tilt) + 2deg));
-  }
-  70% {
-    transform: translate(
-        calc(var(--start-offset-x, -50%) + var(--delta-x, 0px)),
-        calc(var(--start-offset-y, -50%) + var(--delta-y, 220px))
-      )
-      rotate(calc(var(--tilt) - 8deg))
-      scale(0.9);
+    transform: translate(-50%, -50%) rotate(var(--tilt));
   }
   100% {
     transform: translate(
         calc(var(--start-offset-x, -50%) + var(--delta-x, 0px)),
         calc(var(--start-offset-y, -50%) + var(--delta-y, 240px))
       )
-      rotate(calc(var(--tilt) - 20deg))
-      scale(0.85);
+      rotate(calc(var(--tilt) - 8deg));
   }
 }
 
