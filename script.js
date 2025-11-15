@@ -287,7 +287,7 @@ function generateQueuePlacement() {
 
 function createEntryElement(text) {
   const card = document.createElement("div");
-  card.className = "note-card floating-card";
+  card.className = "note-card queue-card";
   card.textContent = text;
   return card;
 }
@@ -343,8 +343,7 @@ function settleEntryIntoDeck(entry) {
   }
 
   const element = entry.element;
-  element.classList.remove("floating-card", "arrive", "note");
-  element.classList.add("queue-card");
+  // Element already has note-card and queue-card classes from creation
   const pos = getDeckLocalPosition(entry);
   element.style.left = `${pos.left}px`;
   element.style.top = `${pos.top}px`;
