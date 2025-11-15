@@ -410,66 +410,64 @@ function dropEntry(entry) {
     return;
   }
 
-  // Capture position while still in queue
-  const originRect = element.getBoundingClientRect();
-  const layerRect = layer.getBoundingClientRect();
-  const startX = originRect.left + originRect.width / 2;
-  const startY = originRect.top + originRect.height / 2;
-
-  // Remove from queue
+  // Remove from queue - just destroy it
   if (queueDeck?.contains(element)) {
     queueDeck.removeChild(element);
   }
 
-  // Convert to note element (changes classes)
-  ensureSmoke(element);
-  element.classList.remove("queue-card", "floating-card", "arrive");
-  element.classList.add("note");
-  element.style.removeProperty("--queue-left");
-  element.style.removeProperty("--queue-top");
-  element.style.removeProperty("--queue-tilt");
+  // Create a completely fresh element for dropping
+  const dropElement = document.createElement("div");
+  dropElement.className = "note";
+  dropElement.textContent = entry.text;
 
-  // CRITICAL: Disable all transitions and set opacity immediately
-  element.style.transition = "none";
-  element.style.opacity = "1";
+  // Add smoke
+  const smoke = document.createElement("span");
+  smoke.className = "smoke";
+  smoke.setAttribute("aria-hidden", "true");
+  dropElement.appendChild(smoke);
 
-  applyNotePalette(element, entry.color);
+  // Apply color
+  dropElement.style.setProperty("--note-bg", entry.color.bg);
+  dropElement.style.setProperty("--note-border", entry.color.border);
+  dropElement.style.setProperty("--note-text", entry.color.text);
 
-  // Set position and tilt AFTER class change, BEFORE appending to layer
-  const tilt = entry.placement?.tilt ?? randomTilt();
-  element.style.setProperty("--tilt", `${tilt}deg`);
-  element.style.left = `${startX - layerRect.left}px`;
-  element.style.top = `${startY - layerRect.top}px`;
-
-  // Set fire target position
+  // Position at top of fire area
+  const layerRect = layer.getBoundingClientRect();
   const fireRect = fireTarget.getBoundingClientRect();
+
+  const startX = fireRect.left + fireRect.width / 2;
+  const startY = fireRect.top - 50; // Start above fire
+
+  dropElement.style.left = `${startX - layerRect.left}px`;
+  dropElement.style.top = `${startY - layerRect.top}px`;
+
+  // Set tilt and target
+  const tilt = randomTilt();
+  dropElement.style.setProperty("--tilt", `${tilt}deg`);
+
   const targetX = fireRect.left + fireRect.width / 2;
-  const targetY = fireRect.top + fireRect.height * (0.25 + Math.random() * 0.3);
-  element.style.setProperty("--delta-x", `${targetX - startX}px`);
-  element.style.setProperty("--delta-y", `${targetY - startY}px`);
+  const targetY = fireRect.top + fireRect.height * 0.3;
+  dropElement.style.setProperty("--delta-x", `${targetX - startX}px`);
+  dropElement.style.setProperty("--delta-y", `${targetY - startY}px`);
 
-  // Now append to layer - should be positioned correctly
-  layer?.appendChild(element);
+  // Append to layer
+  layer?.appendChild(dropElement);
 
-  // Force a reflow to ensure styles are applied
-  element.offsetHeight;
-
-  // Start animation
+  // Start animation immediately
   requestAnimationFrame(() => {
-    element.classList.add("ignite");
+    dropElement.classList.add("ignite");
   });
 
   const onBurnEnd = (event) => {
     if (event.animationName !== "note-burn") {
       return;
     }
-    element.removeEventListener("animationend", onBurnEnd);
-    element.remove();
-    entry.element = null;
-    recordBurn(entry);
+    dropElement.removeEventListener("animationend", onBurnEnd);
+    dropElement.remove();
   };
 
-  element.addEventListener("animationend", onBurnEnd);
+  dropElement.addEventListener("animationend", onBurnEnd);
+  recordBurn(entry);
 }
 
 function convertToNoteElement(entry) {
