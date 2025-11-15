@@ -428,6 +428,11 @@ function dropEntry(entry) {
   element.style.removeProperty("--queue-left");
   element.style.removeProperty("--queue-top");
   element.style.removeProperty("--queue-tilt");
+
+  // CRITICAL: Disable all transitions and set opacity immediately
+  element.style.transition = "none";
+  element.style.opacity = "1";
+
   applyNotePalette(element, entry.color);
 
   // Set position and tilt AFTER class change, BEFORE appending to layer
@@ -445,6 +450,9 @@ function dropEntry(entry) {
 
   // Now append to layer - should be positioned correctly
   layer?.appendChild(element);
+
+  // Force a reflow to ensure styles are applied
+  element.offsetHeight;
 
   // Start animation
   requestAnimationFrame(() => {
