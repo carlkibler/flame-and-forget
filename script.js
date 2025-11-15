@@ -431,17 +431,19 @@ function dropEntry(entry) {
   dropElement.style.setProperty("--note-border", entry.color.border);
   dropElement.style.setProperty("--note-text", entry.color.text);
 
-  // Position at top of fire area
+  // Position at the queue position (where the element was)
   const layerRect = layer.getBoundingClientRect();
+  const queueRect = queueDeck.getBoundingClientRect();
   const fireRect = fireTarget.getBoundingClientRect();
 
-  const startX = fireRect.left + fireRect.width / 2;
-  const startY = fireRect.top - 50; // Start above fire
+  // Start from center of queue area
+  const startX = queueRect.left + queueRect.width / 2;
+  const startY = queueRect.top + queueRect.height / 2;
 
   dropElement.style.left = `${startX - layerRect.left}px`;
   dropElement.style.top = `${startY - layerRect.top}px`;
 
-  // Set tilt and target
+  // Set tilt and target (into the fire)
   const tilt = randomTilt();
   dropElement.style.setProperty("--tilt", `${tilt}deg`);
 
