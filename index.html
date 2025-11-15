@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Flame &amp; Forget</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="scene">
+      <header class="hero">
+        <div class="hero-text">
+          <h1 data-i18n="title">Flame &amp; Forget 🔥</h1>
+          <p data-i18n="tagline">
+            Write down anything you're done with—regrets, cringey moments, bad habits, or just Tuesday. Burn it and move on.
+          </p>
+        </div>
+      </header>
+
+      <main class="camp">
+        <form id="burn-form" autocomplete="off" spellcheck="false">
+          <label class="sr-only" for="grievance" data-i18n="inputLabel">What needs to burn?</label>
+          <textarea
+            id="grievance"
+            name="grievance"
+            maxlength="240"
+            data-i18n-placeholder="placeholder"
+            placeholder="e.g., Tripping on the stairs in front of everyone"
+            rows="3"
+          ></textarea>
+          <button type="button" id="burn-button" data-i18n="burnButton">Burn it and forget it</button>
+        </form>
+
+        <div class="firepit">
+          <div class="queue-deck" aria-hidden="true"></div>
+          <div class="bin">
+            <svg
+              viewBox="0 0 160 200"
+              aria-hidden="true"
+              class="bin-art"
+              role="img"
+            >
+              <title data-i18n="fireAlt">Trash can altar</title>
+              <defs>
+                <linearGradient id="metal" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="#d8d8d8" />
+                  <stop offset="60%" stop-color="#a3a3a3" />
+                  <stop offset="100%" stop-color="#6f6f6f" />
+                </linearGradient>
+              </defs>
+              <rect x="20" y="30" width="120" height="150" rx="18" fill="url(#metal)" />
+              <rect
+                x="10"
+                y="20"
+                width="140"
+                height="30"
+                rx="15"
+                fill="#565656"
+                stroke="#303030"
+                stroke-width="3"
+              />
+              <rect x="50" y="50" width="10" height="110" rx="5" fill="#4a4a4a" />
+              <rect x="100" y="50" width="10" height="110" rx="5" fill="#4a4a4a" />
+              <rect
+                x="35"
+                y="70"
+                width="90"
+                height="13"
+                rx="6"
+                fill="#fcd34d"
+                opacity="0.3"
+              />
+            </svg>
+            <div class="flame">
+              <div></div>
+              <div></div>
+              <div></div>
+            </div>
+          </div>
+          <div class="fire-target" data-fire-target></div>
+        </div>
+      </main>
+
+      <section class="settings-wrap">
+        <details class="settings-panel" id="settings-panel">
+          <summary>
+            <span class="icon" aria-hidden="true">⚙️</span>
+            <span data-i18n="settingsLabel">Settings</span>
+          </summary>
+          <div class="settings-content">
+            <div class="setting-field">
+              <label for="language-select" data-i18n="languageLabel">Language</label>
+              <select id="language-select"></select>
+            </div>
+            <div class="setting-field">
+              <label for="item-delay">
+                <span data-i18n="itemDelayLabel">Item delay (seconds)</span>
+                <output id="item-delay-display">2.5s</output>
+              </label>
+              <input
+                type="range"
+                id="item-delay"
+                min="0.5"
+                max="6"
+                step="0.1"
+                value="2.5"
+              />
+            </div>
+            <div class="setting-field">
+              <label for="fall-duration">
+                <span data-i18n="fallDurationLabel">Fall duration (seconds)</span>
+                <output id="fall-duration-display">3.5s</output>
+              </label>
+              <input
+                type="range"
+                id="fall-duration"
+                min="1.5"
+                max="7"
+                step="0.1"
+                value="3.5"
+              />
+            </div>
+            <div class="setting-field">
+              <label for="burn-duration">
+                <span data-i18n="burnDurationLabel">Burn duration (seconds)</span>
+                <output id="burn-duration-display">2.2s</output>
+              </label>
+              <input
+                type="range"
+                id="burn-duration"
+                min="0.8"
+                max="6"
+                step="0.1"
+                value="2.2"
+              />
+            </div>
+            <div class="setting-field">
+              <label for="flame-intensity">
+                <span data-i18n="flameIntensityLabel">Flame intensity</span>
+                <output id="flame-intensity-display">100%</output>
+              </label>
+              <input
+                type="range"
+                id="flame-intensity"
+                min="0.6"
+                max="1.6"
+                step="0.05"
+                value="1"
+              />
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <footer class="site-footer">
+        <p data-i18n="footerCopy">
+          Share the link, let it all go, and watch your worries turn to smoke.
+        </p>
+      </footer>
+
+      <button class="history-toggle" id="history-toggle" aria-expanded="false">
+        <span class="icon" aria-hidden="true">🕯️</span>
+        <span data-i18n="historyToggle">Burn log</span>
+      </button>
+
+      <aside class="history-drawer" id="history-drawer" aria-hidden="true">
+        <div class="history-content">
+          <h2 data-i18n="historyTitle">Ashes archive</h2>
+          <p data-i18n="historyBlurb">
+            Relieve your mind of these artifacts—they’re gone, recorded here only as proof they can’t hurt your future.
+          </p>
+          <div class="history-empty" data-i18n="historyEmpty">
+            Nothing has burned yet. Toss something in!
+          </div>
+          <ul id="history-list" class="history-list"></ul>
+        </div>
+      </aside>
+
+      <div class="note-layer" aria-live="polite"></div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
