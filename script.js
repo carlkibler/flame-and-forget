@@ -433,8 +433,16 @@ function dropEntry(entry) {
 
   layer?.appendChild(element);
 
+  // Disable transitions before converting to prevent glitch
+  element.style.transition = "none";
+
   convertToNoteElement(entry);
   positionNote(element, originRect, tilt);
+
+  // Re-enable transitions after a frame
+  requestAnimationFrame(() => {
+    element.style.transition = "";
+  });
 
   requestAnimationFrame(() => {
     element.classList.add("ignite");
