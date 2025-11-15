@@ -409,82 +409,76 @@ function processQueue() {
 
 function dropEntry(entry) {
   const element = entry.element;
-  if (!element) {
+  if (!element || !queueDeck || !layer || !fireTarget) {
     return;
   }
 
-  // Remove from queue - just destroy it
+  // Capture the on-screen position before removing from the queue container
+  const elementRect = element.getBoundingClientRect();
+  if (!elementRect) {
+    return;
+  }
+
+  // Remove from queue deck so we can re-use the element for the drop animation
   if (queueDeck?.contains(element)) {
     queueDeck.removeChild(element);
   }
 
-  // Create a completely fresh element for dropping
-  const dropElement = document.createElement("div");
-  dropElement.className = "note";
-  dropElement.textContent = entry.text;
-
-  // Add smoke
-  const smoke = document.createElement("span");
-  smoke.className = "smoke";
-  smoke.setAttribute("aria-hidden", "true");
-  dropElement.appendChild(smoke);
-
-  // Apply color
-  dropElement.style.setProperty("--note-bg", entry.color.bg);
-  dropElement.style.setProperty("--note-border", entry.color.border);
-  dropElement.style.setProperty("--note-text", entry.color.text);
+  // Prepare the queue card so it can be positioned freely in the layer
+  prepareEntryForDrop(entry);
 
   // Position at the queue position (where the element was)
   const layerRect = layer.getBoundingClientRect();
-  const queueRect = queueDeck.getBoundingClientRect();
   const fireRect = fireTarget.getBoundingClientRect();
 
-  // Start from center of queue area
-  const startX = queueRect.left + queueRect.width / 2;
-  const startY = queueRect.top + queueRect.height / 2;
+  const startX = elementRect.left + elementRect.width / 2;
+  const startY = elementRect.top + elementRect.height / 2;
 
-  dropElement.style.left = `${startX - layerRect.left}px`;
-  dropElement.style.top = `${startY - layerRect.top}px`;
+  element.style.left = `${startX - layerRect.left}px`;
+  element.style.top = `${startY - layerRect.top}px`;
 
-  // Set tilt and target (into the fire)
-  const tilt = randomTilt();
-  dropElement.style.setProperty("--tilt", `${tilt}deg`);
+  // Set tilt and target (into the fire). Preserve the queue tilt if available so
+  // the element doesn't visibly snap to a new angle.
+  const tilt = entry.placement?.tilt ?? randomTilt();
+  element.style.setProperty("--tilt", `${tilt}deg`);
 
   const targetX = fireRect.left + fireRect.width / 2;
   const targetY = fireRect.top + fireRect.height * 0.3;
-  dropElement.style.setProperty("--delta-x", `${targetX - startX}px`);
-  dropElement.style.setProperty("--delta-y", `${targetY - startY}px`);
+  element.style.setProperty("--delta-x", `${targetX - startX}px`);
+  element.style.setProperty("--delta-y", `${targetY - startY}px`);
 
   // Append to layer
-  layer?.appendChild(dropElement);
+  layer?.appendChild(element);
 
-  // Start animation immediately
+  // Start animation immediately after forcing the class change in the same frame
   requestAnimationFrame(() => {
-    dropElement.classList.add("ignite");
+    element.classList.remove("queue-card");
+    ensureSmoke(element);
+    element.classList.add("note");
+    element.classList.add("ignite");
   });
 
   const onBurnEnd = (event) => {
     if (event.animationName !== "note-burn") {
       return;
     }
-    dropElement.removeEventListener("animationend", onBurnEnd);
-    dropElement.remove();
+    element.removeEventListener("animationend", onBurnEnd);
+    element.remove();
   };
 
-  dropElement.addEventListener("animationend", onBurnEnd);
+  element.addEventListener("animationend", onBurnEnd);
   recordBurn(entry);
 }
 
-function convertToNoteElement(entry) {
+function prepareEntryForDrop(entry) {
   const element = entry.element;
-  ensureSmoke(element);
-  element.classList.remove("queue-card", "floating-card", "arrive");
-  element.classList.add("note");
+  element.classList.remove("floating-card", "arrive");
+  element.style.position = "absolute";
   element.style.removeProperty("--queue-left");
   element.style.removeProperty("--queue-top");
   element.style.removeProperty("--queue-tilt");
-  applyNotePalette(element, entry.color);
   element.style.removeProperty("transform");
+  applyNotePalette(element, entry.color);
 }
 
 function ensureSmoke(node) {
