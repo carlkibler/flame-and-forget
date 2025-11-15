@@ -288,7 +288,11 @@ function generateQueuePlacement() {
 function createEntryElement(text) {
   const card = document.createElement("div");
   card.className = "note-card queue-card";
-  card.textContent = text;
+
+  // Create a text node, not textContent (to avoid any weird dot issues)
+  const textNode = document.createTextNode(text);
+  card.appendChild(textNode);
+
   return card;
 }
 
@@ -493,12 +497,18 @@ function ensureSmoke(node) {
 }
 
 function applyNotePalette(node, color = pastelPalette[0]) {
+  // Set CSS variables
   node.style.setProperty("--card-bg", color.bg);
   node.style.setProperty("--card-border", color.border);
   node.style.setProperty("--card-text", color.text);
   node.style.setProperty("--note-bg", color.bg);
   node.style.setProperty("--note-border", color.border);
   node.style.setProperty("--note-text", color.text);
+
+  // Also set directly as backup to ensure styling works
+  node.style.backgroundColor = color.bg;
+  node.style.borderColor = color.border;
+  node.style.color = color.text;
 }
 
 function positionNote(note, originRect, tiltValue) {
