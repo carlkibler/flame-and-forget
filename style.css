@@ -63,6 +63,7 @@ body {
 }
 
 .language-select {
+  display: none;
   padding: 0.5rem 0.7rem;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.2);
