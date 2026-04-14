@@ -1,7 +1,0 @@
-{
-  "database": "dolt",
-  "backend": "dolt",
-  "dolt_mode": "embedded",
-  "dolt_database": "flame_and_forget",
-  "project_id": "d7ebf33a-18d8-43ca-8b5d-0a4386c6a635"
-}
