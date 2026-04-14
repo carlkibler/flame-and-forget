@@ -51,6 +51,7 @@ body {
   margin-top: 0;
   line-height: 1.5;
   color: #f5eadd;
+  text-wrap: balance;
 }
 
 .hero-controls {
