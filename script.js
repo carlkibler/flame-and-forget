@@ -18,7 +18,6 @@ const languageSelect = document.getElementById("language-select");
 const fireStyleButtons = document.querySelectorAll("[data-fire-style-btn]");
 const flameContainer = document.querySelector(".flame-container");
 const settingsPanel = document.getElementById("settings-panel");
-const resetSettingsButton = document.getElementById("reset-settings");
 const root = document.documentElement;
 let entryCounter = 0;
 const burnHistory = [];
@@ -39,18 +38,6 @@ const DEFAULT_SETTINGS = {
   fireStyle: "original",
 };
 
-const controls = {
-  itemDelay: document.getElementById("item-delay"),
-  fallDuration: document.getElementById("fall-duration"),
-  burnDuration: document.getElementById("burn-duration"),
-  flameIntensity: document.getElementById("flame-intensity"),
-  displays: {
-    itemDelay: document.getElementById("item-delay-display"),
-    fallDuration: document.getElementById("fall-duration-display"),
-    burnDuration: document.getElementById("burn-duration-display"),
-    flameIntensity: document.getElementById("flame-intensity-display"),
-  },
-};
 
 // Load settings from localStorage or use defaults
 const loadedSettings = loadSettings();
@@ -78,6 +65,38 @@ let paletteIndex = 0;
 
 const burnQueue = [];
 let processingQueue = false;
+
+// ============================================================
+// RAGE MODE
+// ============================================================
+function isRageMode(text) {
+  const letters = text.replace(/[^a-zA-Z]/g, '');
+  if (letters.length < 3) return false;
+  return (text.match(/[A-Z]/g) || []).length / letters.length > 0.75;
+}
+
+// ============================================================
+// HOLD-TO-BURN CHARGE
+// ============================================================
+const CHARGE_DURATION = 1500;
+let chargeTimer = null;
+let pendingChargeLevel = 0;
+
+function startCharge() {
+  pendingChargeLevel = 0;
+  burnButton.classList.add('charging');
+  chargeTimer = setTimeout(() => {
+    pendingChargeLevel = 1;
+    burnButton.classList.remove('charging');
+    burnButton.classList.add('charged');
+  }, CHARGE_DURATION);
+}
+
+function cancelCharge() {
+  clearTimeout(chargeTimer);
+  chargeTimer = null;
+  burnButton.classList.remove('charging', 'charged');
+}
 
 // Encouraging release templates
 const releaseTemplates = [
@@ -503,8 +522,25 @@ const languageOptions = [
 ];
 let examplesDebounce = false;
 
-burnButton?.addEventListener("click", () => {
-  queueFromTextarea();
+burnButton?.addEventListener("pointerdown", (e) => {
+  if (e.button === 2) return;
+  startCharge();
+});
+
+burnButton?.addEventListener("pointerup", () => {
+  const level = pendingChargeLevel;
+  cancelCharge();
+  queueFromTextarea(level);
+});
+
+burnButton?.addEventListener("pointercancel", cancelCharge);
+burnButton?.addEventListener("pointerleave", cancelCharge);
+
+burnButton?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    queueFromTextarea(0);
+  }
 });
 
 examplesButton?.addEventListener("click", () => {
@@ -600,7 +636,7 @@ function commitInlineEntry() {
   input.focus();
 }
 
-function queueFromTextarea() {
+function queueFromTextarea(chargeLevel = 0) {
   const messages = input.value
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -610,25 +646,26 @@ function queueFromTextarea() {
     return;
   }
 
-  enqueueMessages(messages);
+  enqueueMessages(messages, { chargeLevel });
   input.value = "";
   input.focus();
 }
 
 function enqueueMessages(messages, options = {}) {
-  messages.forEach((message, index) => {
-    const entry = createQueueEntry(message);
+  const chargeLevel = options.chargeLevel || 0;
+  messages.forEach((message) => {
+    const entry = createQueueEntry(message, chargeLevel);
     burnQueue.push(entry);
-    // Simplified: always settle directly into deck, no animation
     settleEntryIntoDeck(entry);
   });
   processQueue();
 }
 
-function createQueueEntry(text) {
+function createQueueEntry(text, chargeLevel = 0) {
   const entry = {
     id: `entry-${Date.now()}-${entryCounter++}`,
     text,
+    chargeLevel,
     color: nextPalette(),
     placement: generateQueuePlacement(),
     element: createEntryElement(text),
@@ -818,6 +855,13 @@ function dropEntry(entry) {
   // Append to layer
   layer?.appendChild(element);
 
+  // Character length → burn drama: longer text burns slower and more intensely
+  const burnMult = entry.text.length > 120 ? 1.7 : entry.text.length > 40 ? 1.3 : 1.0;
+  element.style.setProperty("--note-burn-duration", `${settings.burnDuration * burnMult}ms`);
+
+  const rage = isRageMode(entry.text);
+  const charge = entry.chargeLevel || 0;
+
   // Start animation immediately after forcing the class change in the same frame
   requestAnimationFrame(() => {
     element.classList.remove("queue-card");
@@ -825,7 +869,7 @@ function dropEntry(entry) {
     element.classList.add("note");
     element.classList.add("ignite");
     // Trigger flame burst when card is 70% down
-    setTimeout(() => triggerFlameBurst(), settings.dropDuration * 0.7);
+    setTimeout(() => triggerFlameBurst(rage, charge), settings.dropDuration * 0.7);
     // Play crackle when card reaches the fire (after drop completes)
     setTimeout(() => playCrackleSound(), settings.dropDuration);
   });
@@ -918,14 +962,16 @@ function updateFlameVars() {
   root.style.setProperty("--flame-brightness", brightness.toFixed(2));
 }
 
-function triggerFlameBurst() {
+function triggerFlameBurst(rageMode = false, chargeLevel = 0) {
   const baseScale = settings.flameIntensity;
+  // Rage + charge stack multiplicatively, capped at 2.5x
+  const dramaticMult = Math.min(2.5, 1 + (rageMode ? 0.7 : 0) + chargeLevel * 0.6);
   // Burst sequence: baseline → peaks → settle
   const burstSequence = [
-    { scale: baseScale * 1.12, duration: 150 },
-    { scale: baseScale * 1.3, duration: 200 },
-    { scale: baseScale * 1.41, duration: 250 },
-    { scale: baseScale * 1.36, duration: 200 },
+    { scale: baseScale * 1.12 * dramaticMult, duration: 150 },
+    { scale: baseScale * 1.3 * dramaticMult, duration: 200 },
+    { scale: baseScale * 1.41 * dramaticMult, duration: rageMode ? 400 : 250 },
+    { scale: baseScale * 1.36 * dramaticMult, duration: 200 },
     { scale: baseScale * 1.24, duration: 150 },
     { scale: baseScale, duration: 200 },
   ];
@@ -948,13 +994,42 @@ function triggerFlameBurst() {
   });
 }
 
+let _lastTilt = 0;
 function randomTilt() {
-  const u = Math.random() || 1e-4;
-  const v = Math.random() || 1e-4;
-  const standardNormal = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-  const stdDev = 5;
-  const angle = Math.max(-15, Math.min(15, standardNormal * stdDev));
+  const range = 13;
+  const minSep = 6;
+  let angle;
+  let tries = 0;
+  do {
+    angle = (Math.random() * 2 - 1) * range;
+    tries++;
+  } while (Math.abs(angle - _lastTilt) < minSep && tries < 12);
+  _lastTilt = angle;
   return angle.toFixed(2);
+}
+
+function pickAffirmation(itemText) {
+  let templateIndex;
+  do {
+    templateIndex = Math.floor(Math.random() * releaseTemplates.length);
+  } while (templateIndex === lastTemplateIndex && releaseTemplates.length > 1);
+  lastTemplateIndex = templateIndex;
+  return releaseTemplates[templateIndex].replace("{item}", itemText);
+}
+
+function showSmokeAffirmation(message) {
+  if (!fireTarget) return;
+  const fireRect = fireTarget.getBoundingClientRect();
+  const plain = message.replace(/\*\*(.*?)\*\*/g, '$1');
+
+  const el = document.createElement("div");
+  el.className = "smoke-affirmation";
+  el.textContent = plain;
+  el.style.left = `${fireRect.left + fireRect.width / 2}px`;
+  el.style.top = `${fireRect.top}px`;
+  document.body.appendChild(el);
+
+  el.addEventListener("animationend", () => el.remove(), { once: true });
 }
 
 function recordBurn(entry) {
@@ -968,39 +1043,28 @@ function recordBurn(entry) {
     burnHistory.pop();
   }
   renderHistory();
-  addToReleaseLog(entry.text);
+
+  const message = pickAffirmation(entry.text);
+  // Show smoke affirmation after card reaches fire
+  setTimeout(() => showSmokeAffirmation(message), settings.dropDuration * 0.85);
+  addToReleaseLog(message);
 }
 
-function addToReleaseLog(itemText) {
+function addToReleaseLog(message) {
   if (!releaseList) return;
 
-  // Pick a random template different from the last one
-  let templateIndex;
-  do {
-    templateIndex = Math.floor(Math.random() * releaseTemplates.length);
-  } while (templateIndex === lastTemplateIndex && releaseTemplates.length > 1);
-  lastTemplateIndex = templateIndex;
-
-  const template = releaseTemplates[templateIndex];
-  const message = template.replace("{item}", itemText);
-
-  // Parse markdown-style bold (**text**)
   const html = message.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
-  // Create new log entry
   const div = document.createElement("div");
   div.className = "release-entry";
   div.innerHTML = html;
 
-  // Add to top of list
   releaseList.insertBefore(div, releaseList.firstChild);
 
-  // Limit to 20 entries
   while (releaseList.children.length > 20) {
     releaseList.removeChild(releaseList.lastChild);
   }
 
-  // Save to localStorage
   const entries = Array.from(releaseList.children).map(el => el.innerHTML);
   saveReleaseLog(entries);
 }
@@ -1062,76 +1126,11 @@ function toggleHistoryDrawer(forceState) {
   historyDrawer.setAttribute("aria-hidden", nextState ? "false" : "true");
 }
 
-function handleRangeInput(control, formatter, updater, saveCallback) {
-  control.addEventListener("input", (event) => {
-    const value = parseFloat(event.target.value);
-    updater(value);
-    if (formatter) {
-      formatter(value);
-    }
-    if (saveCallback) {
-      saveCallback();
-    }
+function saveCurrentSettings() {
+  saveSettings({
+    fireStyle: settings.fireStyle,
   });
 }
-
-function saveCurrentSettings() {
-  const settingsToSave = {
-    itemDelay: settings.itemDelay / 1000,
-    fallDuration: settings.dropDuration / 1000,
-    burnDuration: settings.burnDuration / 1000,
-    flameIntensity: settings.flameIntensity,
-    fireStyle: settings.fireStyle,
-  };
-  saveSettings(settingsToSave);
-}
-
-handleRangeInput(
-  controls.itemDelay,
-  (value) => {
-    controls.displays.itemDelay.textContent = `${value.toFixed(1)}s`;
-  },
-  (value) => {
-    settings.itemDelay = value * 1000;
-  },
-  saveCurrentSettings,
-);
-
-handleRangeInput(
-  controls.fallDuration,
-  (value) => {
-    controls.displays.fallDuration.textContent = `${value.toFixed(1)}s`;
-  },
-  (value) => {
-    settings.dropDuration = value * 1000;
-    updateDurationVars();
-  },
-  saveCurrentSettings,
-);
-
-handleRangeInput(
-  controls.burnDuration,
-  (value) => {
-    controls.displays.burnDuration.textContent = `${value.toFixed(1)}s`;
-  },
-  (value) => {
-    settings.burnDuration = value * 1000;
-    updateDurationVars();
-  },
-  saveCurrentSettings,
-);
-
-handleRangeInput(
-  controls.flameIntensity,
-  (value) => {
-    controls.displays.flameIntensity.textContent = `${Math.round((value / 0.8) * 100)}%`;
-  },
-  (value) => {
-    settings.flameIntensity = value;
-    updateFlameVars();
-  },
-  saveCurrentSettings,
-);
 
 function initLanguageOptions() {
   languageOptions.forEach((entry) => {
@@ -1193,34 +1192,6 @@ document.addEventListener("click", (event) => {
   }
 });
 
-// Reset settings button
-resetSettingsButton?.addEventListener("click", () => {
-  // Reset to defaults
-  controls.itemDelay.value = DEFAULT_SETTINGS.itemDelay;
-  controls.fallDuration.value = DEFAULT_SETTINGS.fallDuration;
-  controls.burnDuration.value = DEFAULT_SETTINGS.burnDuration;
-  controls.flameIntensity.value = DEFAULT_SETTINGS.flameIntensity;
-
-  // Update displays
-  controls.displays.itemDelay.textContent = `${DEFAULT_SETTINGS.itemDelay.toFixed(1)}s`;
-  controls.displays.fallDuration.textContent = `${DEFAULT_SETTINGS.fallDuration.toFixed(1)}s`;
-  controls.displays.burnDuration.textContent = `${DEFAULT_SETTINGS.burnDuration.toFixed(1)}s`;
-  controls.displays.flameIntensity.textContent = `${Math.round((DEFAULT_SETTINGS.flameIntensity / 0.8) * 100)}%`;
-
-  // Update internal settings
-  settings.itemDelay = DEFAULT_SETTINGS.itemDelay * 1000;
-  settings.dropDuration = DEFAULT_SETTINGS.fallDuration * 1000;
-  settings.burnDuration = DEFAULT_SETTINGS.burnDuration * 1000;
-  settings.flameIntensity = DEFAULT_SETTINGS.flameIntensity;
-  settings.fireStyle = DEFAULT_SETTINGS.fireStyle;
-
-  updateDurationVars();
-  updateFlameVars();
-  applyFireStyle(DEFAULT_SETTINGS.fireStyle);
-
-  // Save to localStorage
-  saveSettings(DEFAULT_SETTINGS);
-});
 
 function applyTranslations(lang) {
   const pack = translations[lang] || translations.en;
@@ -1245,18 +1216,6 @@ function applyTranslations(lang) {
   // Update dynamic remember toggle label
   updateRememberToggleUI(getRememberItemsPreference());
 }
-
-// Apply loaded settings to UI controls
-controls.itemDelay.value = loadedSettings.itemDelay;
-controls.fallDuration.value = loadedSettings.fallDuration;
-controls.burnDuration.value = loadedSettings.burnDuration;
-controls.flameIntensity.value = loadedSettings.flameIntensity;
-
-// Update displays
-controls.displays.itemDelay.textContent = `${loadedSettings.itemDelay.toFixed(1)}s`;
-controls.displays.fallDuration.textContent = `${loadedSettings.fallDuration.toFixed(1)}s`;
-controls.displays.burnDuration.textContent = `${loadedSettings.burnDuration.toFixed(1)}s`;
-controls.displays.flameIntensity.textContent = `${Math.round((loadedSettings.flameIntensity / 0.8) * 100)}%`;
 
 updateDurationVars();
 updateFlameVars();
